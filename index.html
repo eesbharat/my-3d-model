@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GLB Viewer with Tree Sidebar (Unique Parts)</title>
+<title>GLB Viewer with Grouped Tree Sidebar</title>
 <style>
   html, body {
     margin: 0;
@@ -109,44 +109,48 @@
     const tree = document.getElementById('tree');
     tree.innerHTML = '';
 
-    const added = new Set();
-    let count = 0;
+    const partsMap = new Map();
 
+    // Traverse all meshes and group them by their top-level parent name
     object3D.traverse((child) => {
       if (child.isMesh) {
-        const name = child.name?.trim() || `Part ${++count}`;
-        if (added.has(name)) return; // skip duplicates
-        added.add(name);
+        let parentName = child.parent?.name?.trim();
+        if (!parentName || parentName === '') parentName = child.name || '(Unnamed Part)';
 
-        const li = document.createElement('li');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = true;
-        checkbox.addEventListener('change', () => {
-          object3D.traverse(obj => {
-            if (obj.isMesh && obj.name === name) {
-              obj.visible = checkbox.checked;
-            }
-          });
-        });
-
-        const label = document.createElement('span');
-        label.textContent = name;
-        label.style.marginLeft = '6px';
-
-        li.appendChild(checkbox);
-        li.appendChild(label);
-        tree.appendChild(li);
+        if (!partsMap.has(parentName)) {
+          partsMap.set(parentName, []);
+        }
+        partsMap.get(parentName).push(child);
       }
     });
 
-    if (added.size === 0) {
+    if (partsMap.size === 0) {
       const li = document.createElement('li');
-      li.textContent = '⚠️ No mesh parts detected.';
+      li.textContent = '⚠️ No parts detected.';
       tree.appendChild(li);
+      return;
     }
 
-    console.log(`✅ buildTree() done: ${added.size} unique parts listed.`);
+    partsMap.forEach((meshes, name) => {
+      const li = document.createElement('li');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = true;
+
+      checkbox.addEventListener('change', () => {
+        meshes.forEach(m => m.visible = checkbox.checked);
+      });
+
+      const label = document.createElement('span');
+      label.textContent = name;
+      label.style.marginLeft = '6px';
+
+      li.appendChild(checkbox);
+      li.appendChild(label);
+      tree.appendChild(li);
+    });
+
+    console.log(`✅ buildTree() grouped into ${partsMap.size} parts.`);
   }
 
   window.addEventListener('resize', () => {

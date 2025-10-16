@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GLB Viewer with Tree Sidebar (r128 Final Fix)</title>
+<title>GLB Viewer with Tree Sidebar (Unique Parts)</title>
 <style>
   html, body {
     margin: 0;
@@ -23,7 +23,7 @@
     padding: 12px;
     box-shadow: 2px 0 10px rgba(0,0,0,0.4);
     overflow-y: auto;
-    z-index: 1000; /* ensure sidebar always visible */
+    z-index: 1000;
     position: relative;
   }
 
@@ -85,7 +85,6 @@
     console.log('✅ Model loaded:', model);
     buildTree(model);
 
-    // Auto-center and fit camera
     const box = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -108,23 +107,31 @@
 
   function buildTree(object3D) {
     const tree = document.getElementById('tree');
-    tree.innerHTML = ''; // clear "Loading..."
+    tree.innerHTML = '';
 
+    const added = new Set();
     let count = 0;
 
     object3D.traverse((child) => {
       if (child.isMesh) {
-        count++;
+        const name = child.name?.trim() || `Part ${++count}`;
+        if (added.has(name)) return; // skip duplicates
+        added.add(name);
+
         const li = document.createElement('li');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = true;
         checkbox.addEventListener('change', () => {
-          child.visible = checkbox.checked;
+          object3D.traverse(obj => {
+            if (obj.isMesh && obj.name === name) {
+              obj.visible = checkbox.checked;
+            }
+          });
         });
 
         const label = document.createElement('span');
-        label.textContent = child.name || `Part ${count}`;
+        label.textContent = name;
         label.style.marginLeft = '6px';
 
         li.appendChild(checkbox);
@@ -133,13 +140,13 @@
       }
     });
 
-    if (count === 0) {
+    if (added.size === 0) {
       const li = document.createElement('li');
       li.textContent = '⚠️ No mesh parts detected.';
       tree.appendChild(li);
     }
 
-    console.log(`✅ buildTree() done: ${count} parts listed.`);
+    console.log(`✅ buildTree() done: ${added.size} unique parts listed.`);
   }
 
   window.addEventListener('resize', () => {

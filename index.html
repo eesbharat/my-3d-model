@@ -1,140 +1,96 @@
-<!DOCTYPE html>
+<!--
+README: "Host your .glb on GitHub Pages — step-by-step (for non-coders)
+
+Files included below:
+1) index.html  -> a ready-to-use viewer page that uses model-viewer.
+
+What you need to do (short):
+- Create a new GitHub repository (public or private with Pages enabled)
+- Upload index.html and your model.glb to the repo root
+- Enable GitHub Pages (branch: main, folder: / (root))
+- Visit https://<your-github-username>.github.io/<repo-name>/ to view
+
+Detailed step-by-step instructions are included after the HTML file.
+-->
+
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GLB Viewer with Tree Sidebar</title>
-<style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-    font-family: 'Inter', sans-serif;
-    background: #111;
-    color: #eee;
-    display: flex;
-  }
-
-  #sidebar {
-    width: 260px;
-    background: #181818;
-    overflow-y: auto;
-    padding: 12px;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.4);
-    z-index: 10;
-    flex-shrink: 0;
-  }
-
-  #viewer {
-    flex: 1;
-    position: relative;
-    z-index: 1;
-  }
-
-  canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-
-  ul {
-    padding: 0;
-    margin: 0;
-  }
-
-  li {
-    list-style: none;
-    margin: 4px 0;
-    padding: 4px;
-    border-radius: 6px;
-    transition: background 0.2s;
-  }
-
-  li:hover {
-    background: #222;
-  }
-
-  label {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  input[type="checkbox"] {
-    margin-right: 8px;
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GLB Viewer</title>
+  <!-- model-viewer (no build tools needed) -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    :root{--bg:#0b0b0b;--card:#111;--muted:#9aa0a6}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;color:#eee;background:var(--bg)}
+    .wrap{display:grid;grid-template-columns:1fr;gap:16px;align-items:center;justify-items:center;padding:28px}
+    .viewer{width:min(1100px,95vw);height:min(700px,75vh);background:linear-gradient(180deg,#0f1720, #071019);border-radius:12px;padding:12px;box-shadow:0 8px 30px rgba(0,0,0,.7)}
+    model-viewer{width:100%;height:100%;border-radius:8px}
+    .hint{max-width:1100px;color:var(--muted);font-size:14px;text-align:center}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:#0b1220;border:1px solid #172031;color:#cfe3ff;padding:8px 12px;border-radius:8px;cursor:pointer}
+  </style>
 </head>
 <body>
-  <div id="sidebar">
-    <h3>Model Parts</h3>
-    <ul id="tree"></ul>
+  <div class="wrap">
+    <div class="viewer">
+      <!-- Replace model.glb with the exact filename of your .glb uploaded to the repo root -->
+      <model-viewer id="mv" src="model.glb" alt="3D model" camera-controls auto-rotate exposure="1" shadow-intensity="1" ar ar-modes="webxr scene-viewer quick-look" ></model-viewer>
+    </div>
+
+    <div class="hint">
+      <div class="controls">
+        <button onclick="document.getElementById('mv').cameraOrbit='0deg 75deg 2.5m'">Front</button>
+        <button onclick="document.getElementById('mv').cameraOrbit='180deg 75deg 2.5m'">Back</button>
+        <button onclick="document.getElementById('mv').cameraOrbit='90deg 75deg 2.5m'">Side</button>
+        <button onclick="document.getElementById('mv').reveal='interaction'">Reset</button>
+      </div>
+      <p style="margin-top:10px">Tip: upload <strong>index.html</strong> and your <strong>model.glb</strong> to the same repository root. Then enable GitHub Pages on that repo.
+      The page will be available at <code>https://&lt;your-username&gt;.github.io/&lt;repo-name&gt;/</code>
+      </p>
+    </div>
+
+    <details style="max-width:1100px;color:var(--muted)">
+      <summary style="cursor:pointer;padding:8px 0;font-weight:600;color:#cfe3ff">Step-by-step (non-coder friendly)</summary>
+      <ol>
+        <li><strong>Create a new repository on GitHub</strong>
+          <ul>
+            <li>Go to <code>https://github.com</code> and sign in.</li>
+            <li>Click the green <em>New</em> button (top-left under your profile or on your profile page).</li>
+            <li>Give the repo a simple name, e.g. <code>my-3d-model</code>. Description optional.</li>
+            <li>Set it to <strong>Public</strong> (easiest for Pages). Click <em>Create repository</em>.</li>
+          </ul>
+        </li>
+        <li><strong>Upload files (index.html + your .glb)</strong>
+          <ul>
+            <li>Open your repo on GitHub. Click <em>Add file → Upload files</em>.</li>
+            <li>Drag &amp; drop your <code>index.html</code> (this file) and your <code>model.glb</code> file into the browser area.</li>
+            <li>Scroll down and click <em>Commit changes</em>.</li>
+          </ul>
+        </li>
+        <li><strong>Enable GitHub Pages</strong>
+          <ul>
+            <li>In your repo, click <em>Settings</em> → left menu click <em>Pages</em> (or find <em>Pages</em> under Code and automation).</li>
+            <li>Under <em>Build and deployment</em>, choose <em>Branch: main</em> and <em>/ (root)</em> folder.</li>
+            <li>Click <em>Save</em> or <em>Save and Deploy</em>. GitHub will show the URL (it may take a minute to deploy).</li>
+          </ul>
+        </li>
+        <li><strong>Open your page</strong>
+          <ul>
+            <li>Visit: <code>https://&lt;your-username&gt;.github.io/&lt;repo-name&gt;/</code> (replace placeholders with your username and repo name).</li>
+            <li>If the model doesn’t appear, check the browser console (right-click → Inspect → Console) for a 404 filename mismatch or CORS errors.</li>
+          </ul>
+        </li>
+        <li><strong>Troubleshooting</strong>
+          <ul>
+            <li>Filename: make sure the HTML’s <code>src="model.glb"</code> matches the exact filename (case-sensitive).</li>
+            <li>Large files: GitHub has a 100 MB file limit in the web UI. If your .glb is bigger, use Git LFS or reduce size in Blender.</li>
+            <li>Privacy: Public repos are easiest. Private repos require additional steps (or a paid plan for Pages on private repos).
+          </ul>
+        </li>
+      </ol>
+    </details>
   </div>
-  <div id="viewer"></div>
-
-  <!-- Three.js + GLTFLoader -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-
-  <script>
-  let scene = new THREE.Scene();
-  let camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-  let renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.getElementById('viewer').appendChild(renderer.domElement);
-  
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  camera.position.set(2, 2, 3);
-  controls.update();
-
-  const ambientLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.3);
-  scene.add(ambientLight);
-
-  const loader = new THREE.GLTFLoader();
-  loader.load('model.glb', (gltf) => {
-    scene.add(gltf.scene);
-    buildTree(gltf.scene);
-  }, undefined, (err) => {
-    console.error('Error loading model:', err);
-  });
-
-  function buildTree(object3D) {
-    const tree = document.getElementById('tree');
-    object3D.traverse((child) => {
-      if (child.isMesh) {
-        const li = document.createElement('li');
-        const label = document.createElement('label');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = true;
-        checkbox.addEventListener('change', () => child.visible = checkbox.checked);
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(child.name || '(Unnamed Part)'));
-        li.appendChild(label);
-        tree.appendChild(li);
-      }
-    });
-  }
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-
-  function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  }
-  animate();
-  </script>
 </body>
 </html>

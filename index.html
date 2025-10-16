@@ -3,74 +3,84 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GLB Viewer Pro — Grouped Tree + Section View</title>
+<title>GLB Viewer Pro — Transparent Tree + Orthographic</title>
 <style>
   html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    width: 100%;
+    margin: 0; padding: 0;
+    height: 100%; width: 100%;
     display: flex;
     background: linear-gradient(180deg, #f4f4f4, #dcdcdc);
-    color: #333;
-    font-family: sans-serif;
+    color: #333; font-family: sans-serif;
     overflow: hidden;
   }
 
   #sidebar {
-    width: 260px;
-    min-width: 180px;
-    max-width: 600px;
-    background: #f9f9f9;
-    border-right: 1px solid #ccc;
+    width: 240px; min-width: 150px; max-width: 600px;
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    border-right: 1px solid rgba(200,200,200,0.4);
     padding: 10px;
     overflow-y: auto;
-    overflow-x: hidden;
     position: relative;
-    resize: horizontal;
+    z-index: 10;
+    transition: width 0.2s;
   }
 
-  #sidebar h3 {
-    margin-top: 0;
-  }
-
-  #controls {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-  }
-
-  #controls button {
-    background: #eee;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 4px 8px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-
-  #controls button:hover {
-    background: #ddd;
-  }
-
-  #viewer {
-    flex: 1;
-    position: relative;
-  }
-
-  canvas {
+  #resizer {
+    width: 6px;
+    cursor: ew-resize;
+    background: transparent;
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; right: -3px; bottom: 0;
+    z-index: 5;
   }
+
+  #viewer { flex: 1; position: relative; }
+  canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+  #controls { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  #controls button {
+    background: rgba(255,255,255,0.6);
+    border: 1px solid #ccc; border-radius: 4px;
+    padding: 4px 8px; cursor: pointer; font-size: 12px;
+    transition: all 0.2s;
+  }
+  #controls button:hover { background: rgba(255,255,255,0.8); }
 
   ul { padding: 0; margin: 0; }
-  li { list-style: none; margin: 4px 0; padding: 4px; border-radius: 4px; }
-  li:hover { background: #eaeaea; }
-  label, span { display: flex; align-items: center; }
-  input[type="checkbox"] { margin-right: 6px; }
+  li {
+    list-style: none;
+    margin: 3px 0;
+    padding: 4px 6px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(4px);
+  }
+  li:hover { background: rgba(255,255,255,0.2); }
+  li span {
+    flex-grow: 1;
+    margin-left: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: #333;
+    cursor: pointer;
+  }
+
+  #sectionToggle {
+    width: 100%;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid #ccc; border-radius: 4px;
+    padding: 6px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  #sectionToggle:hover { background: rgba(255,255,255,0.8); }
 </style>
 </head>
 <body>
@@ -82,11 +92,11 @@
     </div>
     <ul id="tree"><li>Loading model...</li></ul>
     <hr>
-    <button id="sectionToggle" style="width:100%; background:#eee; border:1px solid #ccc; border-radius:4px; padding:6px; cursor:pointer;">✂️ Toggle Section View</button>
+    <button id="sectionToggle">✂️ Toggle Section View</button>
+    <div id="resizer"></div>
   </div>
   <div id="viewer"></div>
 
-  <!-- Three.js r128 (Stable Non-Module Version) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
@@ -95,31 +105,36 @@
   let scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf0f0f0);
 
-  let camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
-  let renderer = new THREE.WebGLRenderer({ antialias: true });
+  const aspect = window.innerWidth / window.innerHeight;
+  const frustumSize = 3;
+  let camera = new THREE.OrthographicCamera(
+    (frustumSize * aspect) / -2,
+    (frustumSize * aspect) / 2,
+    frustumSize / 2,
+    frustumSize / -2,
+    -1000,
+    1000
+  );
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.getElementById('viewer').appendChild(renderer.domElement);
 
-  let controls = new THREE.OrbitControls(camera, renderer.domElement);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  camera.position.set(3, 3, 5);
 
-  // Lights
   const hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1.2);
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
   dirLight.position.set(5, 10, 7);
   scene.add(hemiLight, dirLight);
 
-  const loader = new THREE.GLTFLoader();
   let model;
+  const loader = new THREE.GLTFLoader();
   loader.load('model.glb', (gltf) => {
     model = gltf.scene;
     scene.add(model);
-
-    console.log('✅ Model loaded:', model);
     buildTree(model);
 
-    // Fit camera to model
     const box = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -128,71 +143,47 @@
     model.scale.setScalar(scale);
     model.position.sub(center.multiplyScalar(scale));
 
-    camera.position.set(maxDim, maxDim, maxDim);
     controls.target.set(0, 0, 0);
     controls.update();
 
-    model.traverse(obj => {
-      if (obj.isMesh) obj.material.side = THREE.DoubleSide;
-    });
-  }, undefined, (error) => {
-    document.getElementById('tree').innerHTML = '<li style="color:red">Error loading model.glb</li>';
-    console.error(error);
+    model.traverse(obj => { if (obj.isMesh) obj.material.side = THREE.DoubleSide; });
   });
 
-  // Build grouped parts tree
   function buildTree(object3D) {
     const tree = document.getElementById('tree');
     tree.innerHTML = '';
-
     const partsMap = new Map();
+
     object3D.traverse((child) => {
       if (child.isMesh) {
-        let parentName = child.parent?.name?.trim();
-        if (!parentName || parentName === '') parentName = child.name || '(Unnamed Part)';
+        let parentName = child.parent?.name?.trim() || child.name || '(Unnamed Part)';
         if (!partsMap.has(parentName)) partsMap.set(parentName, []);
         partsMap.get(parentName).push(child);
       }
     });
 
-    if (partsMap.size === 0) {
-      const li = document.createElement('li');
-      li.textContent = '⚠️ No parts detected.';
-      tree.appendChild(li);
-      return;
-    }
-
     partsMap.forEach((meshes, name) => {
       const li = document.createElement('li');
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = true;
-
-      checkbox.addEventListener('change', () => {
-        meshes.forEach(m => m.visible = checkbox.checked);
-      });
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;
+      cb.addEventListener('change', () => meshes.forEach(m => m.visible = cb.checked));
 
       const label = document.createElement('span');
       label.textContent = name;
-      label.style.marginLeft = '6px';
-
-      li.appendChild(checkbox);
       li.appendChild(label);
+      li.appendChild(cb);
       tree.appendChild(li);
     });
 
-    // Show/Hide All controls
     document.getElementById('showAll').onclick = () => {
       tree.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; cb.dispatchEvent(new Event('change')); });
     };
     document.getElementById('hideAll').onclick = () => {
       tree.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; cb.dispatchEvent(new Event('change')); });
     };
-
-    console.log(`✅ buildTree() grouped into ${partsMap.size} parts.`);
   }
 
-  // Sectional view toggle
   let clippingEnabled = false;
   const sectionButton = document.getElementById('sectionToggle');
   sectionButton.addEventListener('click', () => {
@@ -200,12 +191,32 @@
     renderer.clippingPlanes = clippingEnabled
       ? [new THREE.Plane(new THREE.Vector3(0, -1, 0), 0)]
       : [];
-    sectionButton.style.background = clippingEnabled ? '#ffd1d1' : '#eee';
-    sectionButton.textContent = clippingEnabled ? '✂️ Section ON' : '✂️ Toggle Section View';
+    sectionButton.style.background = clippingEnabled ? 'rgba(255,200,200,0.7)' : 'rgba(255,255,255,0.6)';
+  });
+
+  const sidebar = document.getElementById('sidebar');
+  const resizer = document.getElementById('resizer');
+  let isResizing = false;
+  resizer.addEventListener('mousedown', () => {
+    isResizing = true;
+    document.body.style.cursor = 'ew-resize';
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    const newWidth = Math.min(Math.max(e.clientX, 150), 600);
+    sidebar.style.width = newWidth + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    isResizing = false;
+    document.body.style.cursor = 'default';
   });
 
   window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const aspect = window.innerWidth / window.innerHeight;
+    camera.left = (-frustumSize * aspect) / 2;
+    camera.right = (frustumSize * aspect) / 2;
+    camera.top = frustumSize / 2;
+    camera.bottom = -frustumSize / 2;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });

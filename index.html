@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GLB Viewer with Grouped Tree Sidebar</title>
+<title>GLB Viewer Pro — Grouped Tree + Section View</title>
 <style>
   html, body {
     margin: 0;
@@ -11,38 +11,64 @@
     height: 100%;
     width: 100%;
     display: flex;
-    background: #111;
-    color: #eee;
+    background: linear-gradient(180deg, #f4f4f4, #dcdcdc);
+    color: #333;
     font-family: sans-serif;
     overflow: hidden;
   }
 
   #sidebar {
     width: 260px;
-    background: #181818;
-    padding: 12px;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.4);
+    min-width: 180px;
+    max-width: 600px;
+    background: #f9f9f9;
+    border-right: 1px solid #ccc;
+    padding: 10px;
     overflow-y: auto;
-    z-index: 1000;
+    overflow-x: hidden;
     position: relative;
+    resize: horizontal;
+  }
+
+  #sidebar h3 {
+    margin-top: 0;
+  }
+
+  #controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  #controls button {
+    background: #eee;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  #controls button:hover {
+    background: #ddd;
   }
 
   #viewer {
     flex: 1;
     position: relative;
-    z-index: 1;
   }
 
   canvas {
     position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    display: block;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
   }
 
   ul { padding: 0; margin: 0; }
   li { list-style: none; margin: 4px 0; padding: 4px; border-radius: 4px; }
-  li:hover { background: #222; }
+  li:hover { background: #eaeaea; }
   label, span { display: flex; align-items: center; }
   input[type="checkbox"] { margin-right: 6px; }
 </style>
@@ -50,7 +76,13 @@
 <body>
   <div id="sidebar">
     <h3>Model Parts</h3>
+    <div id="controls">
+      <button id="showAll">👁 Show All</button>
+      <button id="hideAll">🚫 Hide All</button>
+    </div>
     <ul id="tree"><li>Loading model...</li></ul>
+    <hr>
+    <button id="sectionToggle" style="width:100%; background:#eee; border:1px solid #ccc; border-radius:4px; padding:6px; cursor:pointer;">✂️ Toggle Section View</button>
   </div>
   <div id="viewer"></div>
 
@@ -60,31 +92,34 @@
   <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
 
   <script>
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x111111);
+  let scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf0f0f0);
 
-  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  let camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+  let renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.getElementById('viewer').appendChild(renderer.domElement);
 
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  let controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   camera.position.set(3, 3, 5);
 
-  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+  // Lights
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1.2);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
   dirLight.position.set(5, 10, 7);
   scene.add(hemiLight, dirLight);
 
   const loader = new THREE.GLTFLoader();
+  let model;
   loader.load('model.glb', (gltf) => {
-    const model = gltf.scene;
+    model = gltf.scene;
     scene.add(model);
 
     console.log('✅ Model loaded:', model);
     buildTree(model);
 
+    // Fit camera to model
     const box = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -93,7 +128,7 @@
     model.scale.setScalar(scale);
     model.position.sub(center.multiplyScalar(scale));
 
-    camera.position.set(0, 0, 2);
+    camera.position.set(maxDim, maxDim, maxDim);
     controls.target.set(0, 0, 0);
     controls.update();
 
@@ -105,21 +140,17 @@
     console.error(error);
   });
 
+  // Build grouped parts tree
   function buildTree(object3D) {
     const tree = document.getElementById('tree');
     tree.innerHTML = '';
 
     const partsMap = new Map();
-
-    // Traverse all meshes and group them by their top-level parent name
     object3D.traverse((child) => {
       if (child.isMesh) {
         let parentName = child.parent?.name?.trim();
         if (!parentName || parentName === '') parentName = child.name || '(Unnamed Part)';
-
-        if (!partsMap.has(parentName)) {
-          partsMap.set(parentName, []);
-        }
+        if (!partsMap.has(parentName)) partsMap.set(parentName, []);
         partsMap.get(parentName).push(child);
       }
     });
@@ -150,8 +181,28 @@
       tree.appendChild(li);
     });
 
+    // Show/Hide All controls
+    document.getElementById('showAll').onclick = () => {
+      tree.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; cb.dispatchEvent(new Event('change')); });
+    };
+    document.getElementById('hideAll').onclick = () => {
+      tree.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; cb.dispatchEvent(new Event('change')); });
+    };
+
     console.log(`✅ buildTree() grouped into ${partsMap.size} parts.`);
   }
+
+  // Sectional view toggle
+  let clippingEnabled = false;
+  const sectionButton = document.getElementById('sectionToggle');
+  sectionButton.addEventListener('click', () => {
+    clippingEnabled = !clippingEnabled;
+    renderer.clippingPlanes = clippingEnabled
+      ? [new THREE.Plane(new THREE.Vector3(0, -1, 0), 0)]
+      : [];
+    sectionButton.style.background = clippingEnabled ? '#ffd1d1' : '#eee';
+    sectionButton.textContent = clippingEnabled ? '✂️ Section ON' : '✂️ Toggle Section View';
+  });
 
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;

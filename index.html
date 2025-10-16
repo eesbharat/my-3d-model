@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GLB Viewer with Tree Sidebar (r128 Stable)</title>
+<title>GLB Viewer with Tree Sidebar (r128 Final Fix)</title>
 <style>
   html, body {
     margin: 0;
@@ -23,7 +23,8 @@
     padding: 12px;
     box-shadow: 2px 0 10px rgba(0,0,0,0.4);
     overflow-y: auto;
-    z-index: 10;
+    z-index: 1000; /* ensure sidebar always visible */
+    position: relative;
   }
 
   #viewer {
@@ -42,7 +43,7 @@
   ul { padding: 0; margin: 0; }
   li { list-style: none; margin: 4px 0; padding: 4px; border-radius: 4px; }
   li:hover { background: #222; }
-  label { display: flex; align-items: center; }
+  label, span { display: flex; align-items: center; }
   input[type="checkbox"] { margin-right: 6px; }
 </style>
 </head>
@@ -80,20 +81,26 @@
   loader.load('model.glb', (gltf) => {
     const model = gltf.scene;
     scene.add(model);
+
+    console.log('✅ Model loaded:', model);
     buildTree(model);
 
+    // Auto-center and fit camera
     const box = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
+    const scale = 1.5 / maxDim;
+    model.scale.setScalar(scale);
+    model.position.sub(center.multiplyScalar(scale));
 
-    model.position.sub(center);
-    camera.position.set(maxDim * 1.5, maxDim * 1.5, maxDim * 1.5);
+    camera.position.set(0, 0, 2);
     controls.target.set(0, 0, 0);
     controls.update();
 
-    model.traverse(obj => { if (obj.isMesh) obj.material.side = THREE.DoubleSide; });
-    document.getElementById('tree').innerHTML = '';
+    model.traverse(obj => {
+      if (obj.isMesh) obj.material.side = THREE.DoubleSide;
+    });
   }, undefined, (error) => {
     document.getElementById('tree').innerHTML = '<li style="color:red">Error loading model.glb</li>';
     console.error(error);
@@ -101,20 +108,38 @@
 
   function buildTree(object3D) {
     const tree = document.getElementById('tree');
-    object3D.traverse(child => {
+    tree.innerHTML = ''; // clear "Loading..."
+
+    let count = 0;
+
+    object3D.traverse((child) => {
       if (child.isMesh) {
+        count++;
         const li = document.createElement('li');
-        const label = document.createElement('label');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = true;
-        checkbox.addEventListener('change', () => child.visible = checkbox.checked);
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(child.name || '(Unnamed Part)'));
+        checkbox.addEventListener('change', () => {
+          child.visible = checkbox.checked;
+        });
+
+        const label = document.createElement('span');
+        label.textContent = child.name || `Part ${count}`;
+        label.style.marginLeft = '6px';
+
+        li.appendChild(checkbox);
         li.appendChild(label);
         tree.appendChild(li);
       }
     });
+
+    if (count === 0) {
+      const li = document.createElement('li');
+      li.textContent = '⚠️ No mesh parts detected.';
+      tree.appendChild(li);
+    }
+
+    console.log(`✅ buildTree() done: ${count} parts listed.`);
   }
 
   window.addEventListener('resize', () => {
